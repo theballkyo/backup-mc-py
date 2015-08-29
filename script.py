@@ -11,6 +11,8 @@ import oauth2client
 from oauth2client import client
 from oauth2client import tools
 
+T = time.time()
+
 try:
     import argparse
     flags = argparse.ArgumentParser(parents=[tools.argparser]).parse_args()
@@ -20,8 +22,29 @@ SCOPES = "https://www.googleapis.com/auth/drive"
 CLIENT_SECRET_FILE = 'client_secret.json'
 APPLICATION_NAME = 'Drive API Quickstart'
 
-#Define Time
-T = time.time()
+PATH_BACKUP = "/home/mc/mainsv"
+
+"""
+Class MysqlBackup for backup MySQL
+"""
+class MysqlBackup:
+
+  def __init__(self, databases=None, store=None, user="root", 
+    password=None, host=None):
+    self.host = host
+    self.databases = databases
+    self.store = store
+    self.user = user
+    self.password = password
+    self.host = host
+
+  def run(self):
+    command = "mysqldump -u %s -p%s %s | gzip -9 > %s" % (self.user, self.password, self.databases, self.store)
+    try:
+        os.popen(command)
+    except:
+        raise BaseException("Error backup DB!")
+
 
 def get_credentials():
     """Gets valid user credentials from storage.
@@ -88,29 +111,6 @@ def joinFiles(fileName,noOfChunks,chunkSize):
         f2.write(data)
         f2.close()
 
-def zipdir(path, ziph):
-    #Black list file and folder
-    blacklist_folder = ['/plugins/dynmap/web', '/BuildData', '/src', '/CraftBukkit', '/apache-maven-3.2.5'\
-                ,'/Spigot', '/Bukkit', '/work']
-    blacklist_file = ['craftbukkit-1.8.7.jar']
-    for root, dirs, files in os.walk(path):
-        c = False
-        for bl in blacklist_folder:
-            if path + bl in root:
-                c = True
-                break
-        if c:
-            continue
-        print root, "Files list ..."
-        
-        for file in files:
-            if file in blacklist_file:
-                break
-            print root,file
-            #print file
-            ziph.write(os.path.join(root, file))
-        print "-----------------------------------"
-
 def readInChunks(fileObj, chunkSize=2048):
     """
     Lazy function to read a file piece by piece.
@@ -142,10 +142,9 @@ def tardir(path, ziph):
             if file in blacklist_file:
                 break
             print root,file
-            #print file
             ziph.add(os.path.join(root, file))
         print "-----------------------------------"
-        
+
 def upload_gdrive(numchunk):
     """ Upload Files to Google drive
     """
@@ -176,16 +175,20 @@ def upload_gdrive(numchunk):
 
 if __name__ == '__main__':
 
-    # If you want .zip file uncomment this
-    #zipf = zipfile.ZipFile('backup%d.zip' % t, 'w',allowZip64=True)
-    #zipdir('/home/mc/mainsv', zipf)
-    #zipf.close()
-    
-    tar = tarfile.open('backup%d.tar.gz' % T, 'w:gz')
-    
-    tardir('/path/to/minecraft/folder', tar)
-    tar.close()
+    database = 'minecraft'
+    password = ''
+    sql_file_name = "DBbackup%d.sql.gz" % T
+    sql_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), sql_file_name)
 
+    tar = tarfile.open('backup%d.tar.gz' % T, 'w:gz')
+
+    db = MysqlBackup(database, sql_file_name, 'root', password)
+
+    db.run()
+    tar.add(sql_file_name, arcname=sql_file_name)
+    tardir(PATH_BACKUP, tar)
+    tar.close()
+    os.remove(sql_file_name)
     # Split files for upload to gdrive
     #numchunk = splitFile('backup%d.tar.gz' % T, 100000000)
     
