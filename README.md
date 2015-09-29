@@ -12,6 +12,7 @@ Script for backup minecraft server - Python2
 - Can backup SQL Database
 
 ## Next version 1.2 feature ##
+- Multi-processing zip files
 - Chunk upload to Gdrive
 
 # First use 
